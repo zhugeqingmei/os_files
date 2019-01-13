@@ -8,7 +8,11 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/mman.h>
+#include <dirent.h>
 #define MSG_TRY "try again\n"
+
+#define OTHER_MAIN 1
+#define MAIN_MAIN 0
 
 /*0-133,every number has it's own meaning.*/
 void my_errorno()
@@ -278,7 +282,69 @@ void test_mmap()
 	munmap(p, 6);
 	
 }
+/*29-1 code example*/
+#define MAX_PATH 1024
+/* dirwalk:  apply fcn to all files in dir */
+void dirwalk(char *dir, void (*fcn)(char *))
+{
+        char name[MAX_PATH];
+        struct dirent *dp;
+        DIR *dfd;
+        if ((dfd = opendir(dir)) == NULL) {
+                fprintf(stderr, "dirwalk: can't open %s\n", dir);
+                return;
+        }
+        while ((dp = readdir(dfd)) != NULL) {
+                if (strcmp(dp->d_name, ".") == 0
+                    || strcmp(dp->d_name, "..") == 0)
+                        continue;    /* skip self and parent */
+                if (strlen(dir)+strlen(dp->d_name)+2 > sizeof(name))
+                        fprintf(stderr, "dirwalk: name %s %s too long\n",
+                                dir, dp->d_name);
+                else {
+                        sprintf(name, "%s/%s", dir, dp->d_name);
+                        (*fcn)(name);
+                }
+        }
+        closedir(dfd);
+}
+/* fsize:  print the size and name of file "name" */
+void fsize(char *name)
+{
+        struct stat stbuf;
+        if (stat(name, &stbuf) == -1) {
+                fprintf(stderr, "fsize: can't access %s\n", name);
+                return;
+        }
+        if ((stbuf.st_mode & S_IFMT) == S_IFDIR)
+                dirwalk(name, fsize);
+        printf("%8ld %s\n", stbuf.st_size, name);
+}
 
+#if OTHER_MAIN
+int main(int argc, char **argv)
+{
+        if (argc == 1)  /* default: current directory */
+                fsize(".");
+        else
+                while (--argc > 0)
+                        fsize(*++argv);//read the string one by one
+
+        return 0;
+}
+#endif
+
+void test_dir()
+{
+	//test the main argc argc params
+	if(argc == 2)
+	{
+		printf("%s\n",*argv);
+		printf("%s\n",*++argv);
+	}
+
+}
+#if MAIN_MAIN
 
 int  main()
 {
@@ -292,6 +358,8 @@ int  main()
 	// test_fcntl();
 	// test_fcntl2();
 	// test_ioctl();
-	test_mmap();
+	// test_mmap();
+	test_dir();
 	return 0;
 }
+#endif
